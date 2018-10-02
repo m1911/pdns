@@ -2,6 +2,8 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
+. ./directory.conf
+
 echo -e "\033[33m"此脚本只适用PowerDNS_Admin虚拟机添加"\033[0m"
 read -p "请输入域名:" domain
 #检测变量输入是否为空
@@ -9,23 +11,19 @@ if [ -z "${domain}" ]; then
         echo -e "\033[31m"请从新运行$0此脚本，域名不允许为空."\033[0m"
         exit
 fi
-if [ ! -f "/etc/nginx/conf.d/${domain}.conf" ]; then
+if [ ! -f "/usr/local/openresty/nginx/conf/vhost/${domain}.conf" ]; then
 	read -p "输入更多域名:" moredomain
-	read -p "输入pdns_admin安装目录:" web_dir
-	if [[ ${web_dir} = "" ]]; then
-        echo "安装目录为必填项."
-		exit
-	fi
+	read -p "输入网站目录:" web_dir
 	if [ -z ${moredomain} ]; then
-		cat >"/etc/nginx/conf.d/${domain}.conf"<<EOF
+		cat >"/usr/local/openresty/nginx/conf/vhost/${domain}.conf"<<EOF
 server {
   listen 80;
   server_name	${domain};
 
   index                     index.html index.htm index.php;
-  root                      /opt/web/powerdns-admin;
-  access_log                /var/log/nginx/${domain}.access.log combined;
-  error_log                 /var/log/nginx/${domain}.error.log;
+  root                      ${web_dir};
+  access_log                logs/${domain}.access.log combined;
+  error_log                 logs/${domain}.error.log;
 
   client_max_body_size              10m;
   client_body_buffer_size           128k;
@@ -41,7 +39,7 @@ server {
   proxy_headers_hash_bucket_size    64;
 
   location ~ ^/static/  {
-    include  /etc/nginx/mime.types;
+    #include  /usr/local/openresty/nginx/conf/mime.types;
     root ${web_dir}/app;
 
     location ~*  \.(jpg|jpeg|png|gif)$ {
@@ -62,17 +60,18 @@ server {
 
 }
 EOF
-	/usr/sbin/nginx -s reload
+	ln -sf ${PDNSAdmin_WEB_DIR} ${web_dir}
+	/usr/local/openresty/nginx/sbin/nginx -s reload
 	else
-	cat >"/etc/nginx/conf.d/${domain}.conf"<<EOF
+	cat >"/usr/local/openresty/nginx/conf/vhost/${domain}.conf"<<EOF
 server {
   listen 80;
   server_name	${domain} ${moredomain};
 
   index                     index.html index.htm index.php;
-  root                      /opt/web/powerdns-admin;
-  access_log                /var/log/nginx/${domain}.access.log combined;
-  error_log                 /var/log/nginx/${domain}.error.log;
+  root                      ${web_dir};
+  access_log                logs/${domain}.access.log combined;
+  error_log                 logs/${domain}.error.log;
 
   client_max_body_size              10m;
   client_body_buffer_size           128k;
@@ -88,7 +87,7 @@ server {
   proxy_headers_hash_bucket_size    64;
 
   location ~ ^/static/  {
-    include  /etc/nginx/mime.types;
+    #include  /usr/local/openresty/nginx/conf/mime.types;
     root ${web_dir}/app;
 
     location ~*  \.(jpg|jpeg|png|gif)$ {
@@ -109,7 +108,8 @@ server {
 
 }
 EOF
-	/usr/sbin/nginx -s reload
+	ln -sf ${PDNSAdmin_WEB_DIR} ${web_dir}
+	/usr/local/openresty/nginx/sbin/nginx -s reload
 	fi
 	if [ $? -eq 0 ]; then
 		echo -e "\033[32m"虚拟机添加成功"\033[0m"
@@ -119,7 +119,7 @@ else
 	if [[ "${action}" = n && "${action}" = "" ]]; then
 		exit
 	else
-		rm -rf /etc/nginx/conf.d/${domain}.conf
+		rm -rf /usr/local/openresty/nginx/conf/vhost/${domain}.conf
 		echo -e "\033[32m"域名已经删除成功"\033[0m"
 	fi
 fi

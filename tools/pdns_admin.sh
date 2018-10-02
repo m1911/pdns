@@ -2,6 +2,8 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
+. ./directory.conf
+
 echo -e "\033[33m"请选择下列选项进行安装"\033[0m"
 
 echo "1:安装nginx"
@@ -13,19 +15,28 @@ if [ -z "${action}" ]; then
         exit
 fi
 if [ "${action}" -eq 1 ]; then
-	yum install epel-release -y
-	yum install nginx -y
-	systemctl start nginx
-	systemctl enable nginx
-	systemctl status nginx
+	groupadd www
+	useradd -M -s /sbin/nologin -g www www
+	yum-config-manager --add-repo https://openresty.org/package/centos/openresty.repo -y
+	yum install openresty -y
+	rm -rf /usr/local/openresty/nginx/conf/nginx.conf
+	wget -cP /usr/local/openresty/nginx/conf/ http://shell-pdns.test.upcdn.net/nginx/nginx.conf
+	mkdir -p /usr/local/openresty/nginx/conf/vhost
+	if [ ! -f /usr/bin/firewall-cmd ]; then
+		systemctl start openresty
+	else
+		/usr/bin/firewall-cmd --zone=public --add-port=80/tcp --permanent
+		/usr/bin/firewall-cmd --zone=public --add-port=443/tcp --permanent
+		/usr/bin/firewall-cmd --reload
+		systemctl start openresty
+	fi
 fi
 
 if [ "${action}" -eq 2 ]; then
 	read -p "输入数据库管理员密码:" db_root_password
 	read -p "输入需要创建的数据库用户:" db_user
 	read -p "输入需要创建的数据库用户密码:" db_user_password
-	read -p "输入需要创建的数据库名:" db_name	
-	read -p "输入PowerDNS_Admin Web安装目录:" web_dir
+	read -p "输入需要创建的数据库名:" db_name
 #根据IP配置数据库源
 	country=`curl -sSk --connect-timeout 30 -m 60 https://ip.vpser.net/country`
 	echo "Server Location: ${country}"
@@ -40,8 +51,7 @@ trusted-host=pypi.doubanio.com
 EOF
 	fi
 
-
-	yum install python34 python34-devel python-pip gcc git mariadb mariadb-devel openldap-devel xmlsec1-devel xmlsec1-openssl libtool-ltdl-devel -y
+	yum install python34 python34-devel python-pip gcc mariadb-devel openldap-devel xmlsec1-devel xmlsec1-openssl libtool-ltdl-devel -y
 
 	pip install -U pip
 	pip install -U virtualenv
@@ -52,28 +62,28 @@ EOF
 	yum install yarn -y
 	
 	if [ "${country}" = "CN" ]; then
-		git clone https://gitee.com/m1911/PowerDNS-Admin.git ${web_dir}
+		git clone https://gitee.com/m1911/PowerDNS-Admin.git ${PDNSAdmin_WEB_DIR}
 	else
-		git clone https://github.com/ngoduykhanh/PowerDNS-Admin.git ${web_dir}
+		git clone https://github.com/ngoduykhanh/PowerDNS-Admin.git ${PDNSAdmin_WEB_DIR}
 	fi
 	
-	cd ${web_dir}
+	cd ${PDNSAdmin_WEB_DIR}
 	virtualenv -p python3 flask
 	source ./flask/bin/activate
 	pip install -r requirements.txt
 	cp config_template.py config.py
 
-	host=127.0.0.1
 	username=root
-	mysql -h${host} -u ${username} -p${db_root_password} << EOF 2>/dev/null
+	host=127.0.0.1
+	mysql -h ${host} -u ${username} -p${db_root_password} << EOF 2>/dev/null
 CREATE DATABASE ${db_name};
 GRANT ALL ON ${db_name}.* TO '${db_user}'@'%' IDENTIFIED BY '${db_user_password}';
 FLUSH PRIVILEGES;
 EOF
-	sed -i "s#BIND_ADDRESS = '127.0.0.1'#BIND_ADDRESS = '0.0.0.0'#" ${web_dir}/config.py
-	sed -i "s#SQLA_DB_USER = 'pda'#SQLA_DB_USER = '${db_user}'#" ${web_dir}/config.py
-	sed -i "s#SQLA_DB_PASSWORD = 'changeme'#SQLA_DB_PASSWORD = '${db_user_password}'#" ${web_dir}/config.py
-	sed -i "s#SQLA_DB_NAME = 'pda'#SQLA_DB_NAME = '${db_name}'#" ${web_dir}/config.py
+	sed -i "s#BIND_ADDRESS = '127.0.0.1'#BIND_ADDRESS = '0.0.0.0'#" ${PDNSAdmin_WEB_DIR}/config.py
+	sed -i "s#SQLA_DB_USER = 'pda'#SQLA_DB_USER = '${db_user}'#" ${PDNSAdmin_WEB_DIR}/config.py
+	sed -i "s#SQLA_DB_PASSWORD = 'changeme'#SQLA_DB_PASSWORD = '${db_user_password}'#" ${PDNSAdmin_WEB_DIR}/config.py
+	sed -i "s#SQLA_DB_NAME = 'pda'#SQLA_DB_NAME = '${db_name}'#" ${PDNSAdmin_WEB_DIR}/config.py
 
 	export FLASK_APP=app/__init__.py
 	flask db upgrade
@@ -89,8 +99,8 @@ After=network.target
 [Service]
 User=root
 Group=root
-WorkingDirectory=${web_dir}
-ExecStart=${web_dir}/flask/bin/gunicorn --workers 2 --bind unix:${web_dir}/powerdns-admin.sock app:app
+WorkingDirectory=${PDNSAdmin_WEB_DIR}
+ExecStart=${PDNSAdmin_WEB_DIR}/flask/bin/gunicorn --workers 2 --bind unix:${PDNSAdmin_WEB_DIR}/powerdns-admin.sock app:app
 
 [Install]
 WantedBy=multi-user.target

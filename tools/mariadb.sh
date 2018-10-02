@@ -16,19 +16,7 @@ fi
 if [ "${action}" -eq "1" ]; then
 	echo -ne "\033[33m请输入数据库管理员密码:\033[0m"
 	read db_root_password
-	country=`curl -sSk --connect-timeout 30 -m 60 https://ip.vpser.net/country`
-	echo -e "\033[31mServer Location: ${country}\033[0m"
-	if [ "${country}" = "CN" ]; then
-		yum install wget socat -y
-		mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup
-		wget -cP /etc/yum.repos.d http://shell-pdns.test.upcdn.net/rpm/CentOS-Base.repo
-		wget -cP /etc/yum.repos.d http://shell-pdns.test.upcdn.net/rpm/mariadb-cn.repo 
-		rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
-	else
-		yum install wget socat -y
-		wget -cP /etc/yum.repos.d --no-check-certificate https://dl.ilankui.com/rpm/mariadb-us.repo
-	fi
-
+	
 	yum install MariaDB-server MariaDB-client galera  -y
 	
 	mkdir -p ${DATA_DIR}

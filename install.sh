@@ -9,6 +9,17 @@ if [ $(id -u) != "0" ]; then
 	exit 1
 fi
 
+. tools/init.sh
+echo -n "是否安装必要的依赖(y/n):"
+read install
+if [[ -f "/usr/bin/yum" && ${install} = y ]];then
+	Set_Timezone
+	CentOS_InstallNTP
+	CentOS_RemoveAMP
+	CentOS_Modify_Source
+	CentOS_Yum_tool
+fi
+	
 echo -e "\033[33m"请选择下列选项进行安装"\033[0m"
 
 echo "1:更新系统和升级Linux内核"
@@ -36,7 +47,7 @@ elif [ ${action} -eq 3 ]; then
 elif [ ${action} -eq 4 ]; then
 	sh tools/pdns.sh 2>&1 | tee /tmp/pdns_install.log
 elif [ ${action} -eq 5 ]; then
-	sh sh tools/pdns_admin.sh 2>&1 | tee /tmp/pdns_admin_install.log
+	sh tools/pdns_admin.sh 2>&1 | tee /tmp/pdns_admin_install.log
 elif [ ${action} -eq 6 ]; then
 	sh tools/vhost.sh
 elif [ ${action} -eq 7 ]; then

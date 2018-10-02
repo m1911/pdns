@@ -3,7 +3,6 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
-yum install wget -y
 
 country=`curl -sSk --connect-timeout 30 -m 60 https://ip.vpser.net/country`
 echo "Server Location: ${country}"
