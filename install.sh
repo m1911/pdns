@@ -10,14 +10,14 @@ if [ $(id -u) != "0" ]; then
 fi
 
 . tools/init.sh
-echo -n "是否安装必要的依赖(y/n):"
+echo -n "是否安装必要的工具(y/n):"
 read install
 if [[ -f "/usr/bin/yum" && ${install} = y ]];then
 	Set_Timezone
 	CentOS_InstallNTP
-	CentOS_RemoveAMP
 	CentOS_Modify_Source
 	CentOS_Yum_tool
+	CentOS_Install_firewall
 fi
 	
 echo -e "\033[33m"请选择下列选项进行安装"\033[0m"

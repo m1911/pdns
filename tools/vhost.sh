@@ -2,7 +2,7 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-. ./directory.conf
+. ./config.conf
 
 echo -e "\033[33m"此脚本只适用PowerDNS_Admin虚拟机添加"\033[0m"
 read -p "请输入域名:" domain

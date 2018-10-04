@@ -41,13 +41,40 @@ CentOS_Modify_Source()
 		rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
 		yum makecache
 	else
-		wget -cP /etc/yum.repos.d --no-check-certificate https://dl.ilankui.com/rpm/mariadb-us.repo
+		mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup
+		wget -cP /etc/yum.repos.d http://shell-pdns.test.upcdn.net/rpm/CentOS-Base.repo
+		wget -cP /etc/yum.repos.d http://shell-pdns.test.upcdn.net/rpm/mariadb-us.repo
+		rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+		yum makecache
 	fi
 	
 }
 
 CentOS_Yum_tool()
 {
-	yum install wget socat unzip yum-utils git -y
+	yum install wget socat unzip yum-utils git epel-release yum-plugin-priorities -y
+	if [ ! -e /usr/bin/expect ]; then
+		yum install expect -y 
+	fi
 
+}
+
+CentOS_Install_firewall()
+{
+	if [ ! -f /usr/bin/firewall-cmd ]; then
+		yum install firewalld -y
+		systemctl enable firewalld
+		if [ $? -eq 0 ]; then
+			read -p "Firewall安装成功需要重启才能开启成功，是否重启(y|n):" is_reboot
+			if [[ ${is_reboot} == "y" || ${is_reboot} == "Y" ]]; then
+				reboot
+			else
+				echo -e "\033[32m"请自行手动重启服务器"\033[0m"
+				exit
+			fi
+		fi
+		else
+			systemctl start firewalld
+			/usr/bin/firewall-cmd --state
+	fi
 }

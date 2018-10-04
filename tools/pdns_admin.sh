@@ -2,7 +2,7 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-. ./directory.conf
+. ./config.conf
 
 echo -e "\033[33m"请选择下列选项进行安装"\033[0m"
 
@@ -22,18 +22,15 @@ if [ "${action}" -eq 1 ]; then
 	rm -rf /usr/local/openresty/nginx/conf/nginx.conf
 	wget -cP /usr/local/openresty/nginx/conf/ http://shell-pdns.test.upcdn.net/nginx/nginx.conf
 	mkdir -p /usr/local/openresty/nginx/conf/vhost
-	if [ ! -f /usr/bin/firewall-cmd ]; then
-		systemctl start openresty
-	else
-		/usr/bin/firewall-cmd --zone=public --add-port=80/tcp --permanent
-		/usr/bin/firewall-cmd --zone=public --add-port=443/tcp --permanent
-		/usr/bin/firewall-cmd --reload
-		systemctl start openresty
-	fi
+	
+	/usr/bin/firewall-cmd --zone=public --add-port=80/tcp --permanent
+	/usr/bin/firewall-cmd --zone=public --add-port=443/tcp --permanent
+	/usr/bin/firewall-cmd --reload
+	systemctl enable openresty
+	systemctl start openresty
 fi
 
 if [ "${action}" -eq 2 ]; then
-	read -p "输入数据库管理员密码:" db_root_password
 	read -p "输入需要创建的数据库用户:" db_user
 	read -p "输入需要创建的数据库用户密码:" db_user_password
 	read -p "输入需要创建的数据库名:" db_name
@@ -74,13 +71,13 @@ EOF
 	cp config_template.py config.py
 
 	username=root
-	host=127.0.0.1
-	mysql -h ${host} -u ${username} -p${db_root_password} << EOF 2>/dev/null
+	mysql -u ${username} -p${db_root_password} <<EOF
 CREATE DATABASE ${db_name};
-GRANT ALL ON ${db_name}.* TO '${db_user}'@'%' IDENTIFIED BY '${db_user_password}';
+GRANT ALL ON ${db_name}.* TO '${db_user}'@'localhost' IDENTIFIED BY '${db_user_password}';
 FLUSH PRIVILEGES;
 EOF
 	sed -i "s#BIND_ADDRESS = '127.0.0.1'#BIND_ADDRESS = '0.0.0.0'#" ${PDNSAdmin_WEB_DIR}/config.py
+	sed -i "s#SQLA_DB_HOST = '127.0.0.1'#SQLA_DB_HOST = 'localhost'#" ${PDNSAdmin_WEB_DIR}/config.py
 	sed -i "s#SQLA_DB_USER = 'pda'#SQLA_DB_USER = '${db_user}'#" ${PDNSAdmin_WEB_DIR}/config.py
 	sed -i "s#SQLA_DB_PASSWORD = 'changeme'#SQLA_DB_PASSWORD = '${db_user_password}'#" ${PDNSAdmin_WEB_DIR}/config.py
 	sed -i "s#SQLA_DB_NAME = 'pda'#SQLA_DB_NAME = '${db_name}'#" ${PDNSAdmin_WEB_DIR}/config.py

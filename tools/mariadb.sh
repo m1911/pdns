@@ -25,17 +25,12 @@ if [ "${action}" -eq "1" ]; then
 	
 	rm -rf /etc/my.cnf.d/*
 	wget -c http://shell-pdns.test.upcdn.net/rpm/my.cnf -O /etc/my.cnf.d/server.cnf
-	if [[ $? -eq 0 && ! -f /usr/bin/firewall-cmd ]]; then
-		systemctl start mysql
-	else
-		systemctl start mysql
-		/usr/bin/firewall-cmd --zone=public --add-port=3306/tcp --permanent
-		/usr/bin/firewall-cmd --reload
-	fi
+		
+	/usr/bin/firewall-cmd --zone=public --add-port=3306/tcp --permanent
+	/usr/bin/firewall-cmd --reload
+	
+	systemctl enable mysql &systemctl start mysql
 	#开始配置Mysql_secure_installation
-	if [ ! -e /usr/bin/expect ]; then
-		yum install expect -y 
-	fi
 	SECURE_MYSQL=$(expect -c "
 	set timeout 3
 	spawn /usr/bin/mysql_secure_installation
@@ -59,6 +54,7 @@ if [ "${action}" -eq "1" ]; then
 	")
 	echo "${SECURE_MYSQL}"
 	echo -e "\033[31m数据库密码是:${db_root_password}\033[0m"
+	sed -i "s#db_root_password=''#db_root_password='${db_root_password}'#" ./config.conf
 elif [ "${action}" -eq "2" ]; then
 	echo -ne "\033[31m是否设置XtraBackup授权账号\033[0m(只需在DB1上设置一次,y/n):"
 	read xtrabackup_name
@@ -98,14 +94,11 @@ wsrep_sst_auth=galera:${db_root_password}
 wsrep_sst_method=xtrabackup-v2
 EOF
 	sed -i "s#bind-address = 0.0.0.0#bind-address = ${node_ip}#" /etc/my.cnf.d/server.cnf
-	if [ ! -f /usr/bin/firewall-cmd ]; then
-		exit
-	else
-		/usr/bin/firewall-cmd --zone=public --add-port=4567/tcp --permanent
-		/usr/bin/firewall-cmd --zone=public --add-port=4568/tcp --permanent
-		/usr/bin/firewall-cmd --zone=public --add-port=4444/tcp --permanent
-		/usr/bin/firewall-cmd --reload
-	fi
+	/usr/bin/firewall-cmd --zone=public --add-port=4567/tcp --permanent
+	/usr/bin/firewall-cmd --zone=public --add-port=4568/tcp --permanent
+	/usr/bin/firewall-cmd --zone=public --add-port=4444/tcp --permanent
+	/usr/bin/firewall-cmd --reload
+
 	if [ $? -eq 0 ]; then
 		echo -ne "\033[31m是否启动Galera_Cluster(y/n):\033[0m"
 		read action2

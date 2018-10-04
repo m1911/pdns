@@ -2,6 +2,8 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
+. ./config.conf
+
 echo "1:安装Master服务器"
 echo "2:安装Slave服务器"
 
@@ -14,7 +16,6 @@ fi
 
 if [ ${action} -eq 1 ]; then
 	read -p "输入主机名(完整的FQDN):" host_name
-	read -p "输入数据库管理员密码:" db_root_password
 	read -p "输入需要创建的数据库用户名:" db_user
 	read -p "输入需要创建的数据库用户密码:" db_user_password
 	read -p "输入需要创建的数据库名:" db_name	
@@ -23,21 +24,19 @@ if [ ${action} -eq 1 ]; then
 	#设置主机名
 	/usr/bin/hostnamectl set-hostname ${host_name}
 	#安装pdns
-	yum install epel-release yum-plugin-priorities -y
 	curl -o /etc/yum.repos.d/powerdns-auth-master.repo https://repo.powerdns.com/repo-files/centos-auth-master.repo
 	rpm --import https://repo.powerdns.com/CBC8B383-pub.asc
 	yum install pdns pdns-backend-mysql -y
 	
 	#创建数据库已经pdns用户
-	host=127.0.0.1
 	username=root
-	/usr/bin/mysql -h${host} -u ${username} -p${db_root_password} << EOF
+	mysql -u ${username} -p${db_root_password} << EOF
 CREATE DATABASE ${db_name};
-GRANT ALL ON ${db_name}.* TO '${db_user}'@'%' IDENTIFIED BY '${db_user_password}';
+GRANT ALL ON ${db_name}.* TO '${db_user}'@'localhost' IDENTIFIED BY '${db_user_password}';
 FLUSH PRIVILEGES;
 EOF
 	#以下为创建pdns所需要用到的表
-	/usr/bin/mysql -h${host} -u ${username} -p${db_root_password} -D ${db_name}<< EOF
+	mysql -u ${username} -p${db_root_password} -D ${db_name}<< EOF
 CREATE TABLE domains (
   id                    INT AUTO_INCREMENT,
   name                  VARCHAR(255) NOT NULL,
@@ -118,7 +117,7 @@ setuid=pdns
 daemon=yes
 disable-axfr=no
 launch=gmysql
-gmysql-host=127.0.0.1
+gmysql-host=localhost
 gmysql-user=${db_user}
 gmysql-password=${db_user_password}
 gmysql-dbname=${db_name}
@@ -129,7 +128,7 @@ any-to-tcp=yes
 resolver=114.114.114.114:53
 expand-alias=yes
 logging-facility=0
-version-string=bind-9
+version-string=Hello DNS
 max-queue-length=5000
 max-cache-entries=1000000
 max-tcp-connections=20
@@ -138,13 +137,15 @@ udp-truncation-threshold=1680
 default-soa-mail=admin.${host_name}
 default-soa-name=${host_name}
 EOF
+	/usr/bin/firewall-cmd --zone=public --add-port=53/udp --permanent
+	/usr/bin/firewall-cmd --reload
+	
 systemctl enable pdns
 systemctl start pdns
 systemctl status pdns
 
 elif [ ${action} -eq 2 ]; then
-	read -p "输入主机名(完整的FQDN):" host_name 
-	read -p "输入数据库管理员密码:" db_root_password
+	read -p "输入主机名(完整的FQDN):" host_name
 	read -p "输入需要创建的数据库用户名:" db_user
 	read -p "输入需要创建的数据库用户密码:" db_user_password
 	read -p "输入需要创建的数据库名:" db_name
@@ -164,7 +165,7 @@ setgid=pdns
 setuid=pdns
 daemon=yes
 launch=gmysql
-gmysql-host=127.0.0.1
+gmysql-host=localhost
 gmysql-user=${db_user}
 gmysql-password=${db_user_password}
 gmysql-dbname=${db_name}
@@ -173,13 +174,16 @@ any-to-tcp=yes
 resolver=114.114.114.114:53
 expand-alias=yes
 logging-facility=0
-version-string=bind-9
+version-string=Hello DNS
 max-queue-length=5000
 max-cache-entries=1000000
 max-tcp-connections=20
 edns-subnet-processing=yes
 udp-truncation-threshold=1680
 EOF
+	/usr/bin/firewall-cmd --zone=public --add-port=53/udp --permanent
+	/usr/bin/firewall-cmd --reload
+	
 systemctl enable pdns
 systemctl start pdns
 systemctl status pdns
