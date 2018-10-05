@@ -41,11 +41,8 @@ CentOS_Modify_Source()
 		rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
 		yum makecache
 	else
-		mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup
-		wget -cP /etc/yum.repos.d http://shell-pdns.test.upcdn.net/rpm/CentOS-Base.repo
 		wget -cP /etc/yum.repos.d http://shell-pdns.test.upcdn.net/rpm/mariadb-us.repo
 		rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
-		yum makecache
 	fi
 	
 }

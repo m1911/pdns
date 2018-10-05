@@ -14,9 +14,9 @@ echo -n "是否安装必要的工具(y/n):"
 read install
 if [[ -f "/usr/bin/yum" && ${install} = y ]];then
 	Set_Timezone
-	CentOS_InstallNTP
-	CentOS_Modify_Source
 	CentOS_Yum_tool
+	CentOS_Modify_Source
+	CentOS_InstallNTP
 	CentOS_Install_firewall
 fi
 	

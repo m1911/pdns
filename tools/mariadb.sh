@@ -25,11 +25,11 @@ if [ "${action}" -eq "1" ]; then
 	
 	rm -rf /etc/my.cnf.d/*
 	wget -c http://shell-pdns.test.upcdn.net/rpm/my.cnf -O /etc/my.cnf.d/server.cnf
-		
-	/usr/bin/firewall-cmd --zone=public --add-port=3306/tcp --permanent
-	/usr/bin/firewall-cmd --reload
 	
-	systemctl enable mysql &systemctl start mysql
+	firewall-cmd --zone=public --add-port=3306/tcp --permanent
+	firewall-cmd --reload
+	
+	systemctl enable mariadb &systemctl start mariadb
 	#开始配置Mysql_secure_installation
 	SECURE_MYSQL=$(expect -c "
 	set timeout 3
